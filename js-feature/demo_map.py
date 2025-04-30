@@ -13,7 +13,7 @@ from demo_data import load_shapefile
 os.environ['SHAPE_RESTORE_SHX'] = 'YES'
 warnings.filterwarnings("ignore", message="Unverified HTTPS request")
 st.set_page_config(layout="wide", page_title="Buildable Supply Explorer")
-st.title("📍 Buildable Housing Supply Explorer")
+st.title("📍 OnBalance")
 
 # Load demo data
 if 'demo_data' not in st.session_state:
