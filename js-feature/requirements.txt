@@ -1,0 +1,12 @@
+streamlit
+pandas
+plotly
+geopandas
+folium
+altair
+python-dotenv
+requests
+numpy
+snowflake-connector-python
+
+
