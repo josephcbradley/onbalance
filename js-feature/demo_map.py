@@ -23,20 +23,6 @@ constraints_gdf, housing_demand_gdf = st.session_state.demo_data
 # Load the SHP file for SHLAA Sites (from the 'data' folder)
 shp_file_path = "data/londonshlaa.shp"  
 
-def load_shapefile(shp_file_path):
-    """Load the shapefile and return a GeoDataFrame."""
-    if os.path.exists(shp_file_path):
-        try:
-            # Read the shapefile into a GeoDataFrame
-            gdf = gpd.read_file(shp_file_path)
-            return gdf
-        except Exception as e:
-            st.error(f"Error loading shapefile: {str(e)}")
-            return None
-    else:
-        st.error(f"Shapefile not found at {shp_file_path}")
-        return None
-
 # Load SHLAA sites from the shapefile
 shlaa_gdf = load_shapefile(shp_file_path)
 
