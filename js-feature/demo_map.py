@@ -86,7 +86,7 @@ elif constraint_source == "Planning Data API":
         else:
             st.warning(f"Could not fetch {ds}: HTTP {resp.status_code}")
 
-density= st.sidebar.slider(label = "density", min_value=20, max_value=100)
+density= st.sidebar.slider(label = "density", min_value=20, max_value=120)
 
 # Sidebar: select constraint layers to display
 selected = st.sidebar.multiselect(
