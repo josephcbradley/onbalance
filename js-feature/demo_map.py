@@ -8,6 +8,7 @@ from shapely.geometry import Point, Polygon
 from streamlit_folium import st_folium
 from demo_data import generate_dummy_data
 from demo_data import load_shapefile
+from streamlit_sortables import sort_items
 
 # Setup
 os.environ['SHAPE_RESTORE_SHX'] = 'YES'
@@ -21,7 +22,7 @@ if 'demo_data' not in st.session_state:
 constraints_gdf, housing_demand_gdf = st.session_state.demo_data
 
 # Load the SHP file for SHLAA Sites (from the 'data' folder)
-shp_file_path = "data/londonshlaa.shp"  
+shp_file_path = "data/London/London_SHLAA_2017_approvals_and_allocations.shp"  
 
 # Load SHLAA sites from the shapefile
 shlaa_gdf = load_shapefile(shp_file_path)
@@ -49,7 +50,7 @@ if show_constraints:
                 "fillOpacity": 0.3,
                 "weight": 2
             },
-            tooltip=folium.GeoJsonTooltip(fields=["constraint_type", "description", "severity"]),
+            tooltip=folium.GeoJsonTooltip(fields=["constraint_type", "description"]),
         ).add_to(m)
 
 # Housing demand points layer (with color scale)
@@ -76,9 +77,33 @@ if show_shlaa and shlaa_gdf is not None:
 folium.LayerControl().add_to(m)
 
 # Display the map in Streamlit
-st.subheader("🗺️ Buildable Supply Map")
-st_folium(m, width=1000, height=600)
+# Layout: Split into two columns (map on left, controls on right)
+left_col, right_col = st.columns([2, 1])
 
-st.subheader("📋 Capacity by Area")
-# Display a table showing constraints with severity for user reference
-st.dataframe(constraints_gdf[["constraint_type", "severity"]].sort_values("severity", ascending=False))
+with left_col:
+    st.subheader("🗺️ Buildable Supply Map")
+    st_folium(m, width=700, height=600)
+
+with right_col:
+    st.subheader("📊 Rank Constraints")
+    st.markdown("Drag and drop to rank constraints from most to least important.")
+
+    # Unique constraints as list
+    unique_constraints = list(constraints_gdf["constraint_type"].unique())
+
+    # Initialize state if not present
+    if "constraint_order" not in st.session_state:
+        st.session_state.constraint_order = unique_constraints
+
+    # Drag-and-drop sorting
+    sorted_constraints = sort_items(st.session_state.constraint_order, direction="vertical")
+    st.session_state.constraint_order = sorted_constraints
+
+    # Display rankings in a table
+    rankings_df = pd.DataFrame({
+        "Constraint Type": sorted_constraints,
+        "Rank (1 = Most Important)": list(range(1, len(sorted_constraints) + 1))
+    })
+
+    right_col.markdown("### 📋 Your Rankings")
+    right_col.dataframe(rankings_df, use_container_width=True)

@@ -13,16 +13,6 @@ def load_shapefile(shapefile_path):
             # Read the shapefile into a GeoDataFrame
             gdf = gpd.read_file(shapefile_path)
             
-            # Check if CRS is set
-            if gdf.crs is None:
-                st.warning("CRS is missing! Assuming EPSG:4326.")
-                gdf.set_crs("EPSG:4326", allow_override=True, inplace=True)
-            else:
-                # If CRS is not EPSG:4326, convert it to EPSG:4326
-                if gdf.crs != "EPSG:4326":
-                    st.warning(f"CRS is {gdf.crs}. Converting to EPSG:4326.")
-                    gdf = gdf.to_crs("EPSG:4326")
-            
             return gdf
         except Exception as e:
             st.error(f"Error loading shapefile: {str(e)}")
