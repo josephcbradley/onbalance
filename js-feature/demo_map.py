@@ -1,86 +1,133 @@
+# Streamlit App: Buildable Housing Supply Explorer
+# ------------------------------------------------------------------
+# This script loads SHLAA site data (shapefile), calculates site areas,
+# fetches or loads boundary and constraint data, and renders an interactive map.
+#
+# Requirements:
+#   pip install streamlit geopandas pandas folium streamlit-folium pyproj requests
+#
+# Usage:
+#   streamlit run demo_map.py
+
 import os
-import warnings
+import glob
+import streamlit as st
 import pandas as pd
 import geopandas as gpd
+from shapely.geometry import Point
 import folium
-import streamlit as st
-from shapely.geometry import Point, Polygon
 from streamlit_folium import st_folium
-from demo_data import generate_dummy_data
-from demo_data import load_shapefile
-import glob
+import requests
+import io
+import warnings
+import tempfile
 
-# Setup
+# Allow shapefile restoration if missing .shx
 os.environ['SHAPE_RESTORE_SHX'] = 'YES'
 warnings.filterwarnings("ignore", message="Unverified HTTPS request")
+
 st.set_page_config(layout="wide", page_title="Buildable Supply Explorer")
-st.title("📍 OnBalance")
+st.title("📍 Buildable Housing Supply Explorer")
 
-# Load demo data
-if 'demo_data' not in st.session_state:
-    st.session_state.demo_data = generate_dummy_data()
-constraints_gdf, housing_demand_gdf = st.session_state.demo_data
-
-# Load the SHP file for SHLAA Sites (from the 'data' folder)
-
-shp_file_path = "data/London/londonshlaa.shp"  
+# 1. Load the SHP file for SHLAA Sites (from the 'data/London' folder)
+st.sidebar.header("1. SHLAA Sites")
+shp_files = glob.glob(os.path.join("data/London", "*.shp"))
+if not shp_files:
+    st.error("No .shp file found in 'data/London' folder.")
+    st.stop()
+shp_path = shp_files[0]
 
 # Load SHLAA sites from the shapefile
-shlaa_gdf = load_shapefile(shp_file_path)
+shlaa_gdf = gpd.read_file(shp_path)
 
-# Sidebar toggle controls
-st.sidebar.header("🗺️ Toggle Map Layers")
-show_shlaa = st.sidebar.checkbox("Show SHLAA sites (green)", value=True)
-show_constraints = st.sidebar.checkbox("Show planning constraints (red)", value=True)
-show_housing_demand = st.sidebar.checkbox("Show housing need points (orange)", value=True)
+# Ensure CRS is set (assume EPSG:27700 if missing)
+if shlaa_gdf.crs is None:
+    shlaa_gdf.set_crs(epsg=27700, inplace=True)
 
-# Center map on London
-m = folium.Map(location=[51.5, -0.1], zoom_start=11)
+# Calculate area in square meters and hectares
+shlaa_gdf = shlaa_gdf.to_crs(epsg=27700)
+shlaa_gdf['area_m2'] = shlaa_gdf.geometry.area
+shlaa_gdf['area_ha'] = shlaa_gdf['area_m2'] / 10000
+# Back to WGS84 for mapping
+shlaa_gdf = shlaa_gdf.to_crs(epsg=4326)
+st.sidebar.write(f"Loaded {len(shlaa_gdf)} SHLAA sites; computed areas.")
 
+# 2. Fetch or load constraint data
+st.sidebar.header("2. Constraint Data")
+constraint_source = st.sidebar.selectbox(
+    "Load constraints from:",
+    options=["Local GeoJSON files", "Planning Data API"]
+)
+constraint_layers = {}
+if constraint_source == "Local GeoJSON files":
+    geojson_paths = glob.glob(os.path.join("data", "*.geojson"))
+    for path in geojson_paths:
+        name = os.path.splitext(os.path.basename(path))[0]
+        gdf = gpd.read_file(path)
+        if gdf.crs is None:
+            gdf.set_crs(epsg=4326, inplace=True)
+        else:
+            gdf = gdf.to_crs(epsg=4326)
+        constraint_layers[name] = gdf
+elif constraint_source == "Planning Data API":
+    # Example: fetch flood-risk-level
+    datasets = ["flood-risk-level", "green-belt", "heritage-site"]
+    base_url = "https://api.planning.data.gov.uk/entity.geojson"
+    for ds in datasets:
+        params = {"dataset": ds, "limit": 10000}
+        resp = requests.get(base_url, params=params)
+        if resp.status_code == 200:
+            gdf = gpd.read_file(io.StringIO(resp.text))
+            if gdf.crs is None:
+                gdf.set_crs(epsg=4326, inplace=True)
+            else:
+                gdf = gdf.to_crs(epsg=4326)
+            constraint_layers[ds] = gdf
+        else:
+            st.warning(f"Could not fetch {ds}: HTTP {resp.status_code}")
 
-# Constraints Layer (with color scale based on severity)
-if show_constraints:
-    for ctype in constraints_gdf["constraint_type"].unique():
-        subset = constraints_gdf[constraints_gdf["constraint_type"] == ctype]
-        # Apply color scale based on severity
-        folium.GeoJson(
-            subset,
-            name=f"Constraint: {ctype}",
-            style_function=lambda x: {
-                "color": "red",
-                "fillOpacity": 0.3,
-                "weight": 2
-            },
-            tooltip=folium.GeoJsonTooltip(fields=["constraint_type", "description", "severity"]),
-        ).add_to(m)
+density= st.sidebar.slider(label = "density", min_value=20, max_value=100)
 
-# Housing demand points layer (with color scale)
-if show_housing_demand:
-    for _, row in housing_demand_gdf.iterrows():
-        folium.CircleMarker(
-            location=[row.geometry.y, row.geometry.x],
-            radius=6,
-            color='orange',
-            fill=True,
-            fill_opacity=0.7,
-            popup=f"Ward: {row['ward_name']}<br>Forecast: {row['forecast_demand']}",
-        ).add_to(m)
+# Sidebar: select constraint layers to display
+selected = st.sidebar.multiselect(
+    "Constraint layers to show:", list(constraint_layers.keys()), default=list(constraint_layers.keys())
+)
 
-if show_shlaa and shlaa_gdf is not None:
+# 3. Base map
+m = folium.Map(location=[shlaa_gdf.geometry.centroid.y.mean(), shlaa_gdf.geometry.centroid.x.mean()], zoom_start=11)
+
+# 4. Overlay SHLAA sites
+show_sites = st.sidebar.checkbox("Show SHLAA Sites", value=True)
+if show_sites:
     folium.GeoJson(
         shlaa_gdf,
-        name="SHLAA Sites",  # Optional name for the layer
-        style_function=lambda x: {'fillOpacity': 0.5, 'color': 'black'}  # Optional style for borders and opacity
+        name="SHLAA Sites",
+        style_function=lambda feat: {"color": "blue", "weight": 1},
+        tooltip=folium.GeoJsonTooltip(fields=["area_ha"], aliases=["Area (ha):"])  
     ).add_to(m)
 
+# 5. Overlay constraints
+colors = {name: col for name, col in zip(constraint_layers.keys(), ["red","green","purple","orange"])}
+for name in selected:
+    gdf = constraint_layers[name]
+    folium.GeoJson(
+        gdf,
+        name=name,
+        style_function=lambda feat, color=colors.get(name, 'red'): {"color": color, "fillOpacity": 0.2},
+        tooltip=folium.GeoJsonTooltip(fields=[f for f in gdf.columns if gdf.dtypes[f] != 'geometry'])
+    ).add_to(m)
 
-# Final map setup
+# 6. Layer control and display
 folium.LayerControl().add_to(m)
+st.subheader("🗺️ Buildable Supply Map with Constraints")
 
-# Display the map in Streamlit
-st.subheader("🗺️ Buildable Supply Map")
+area_ha = shlaa_gdf.to_crs(epsg=3857).area.sum() / 10000
+st.write(shlaa_gdf.crs, area_ha)
+st.write(density)
+st.write(area_ha)
+st.write(area_ha*density) # Number of dwellings
 st_folium(m, width=1000, height=600)
 
-st.subheader("📋 Capacity by Area")
-# Display a table showing constraints with severity for user reference
-st.dataframe(constraints_gdf[["constraint_type", "severity"]].sort_values("severity", ascending=False))
+# 7. Show SHLAA area summary
+st.subheader("📋 SHLAA Site Areas")
+st.dataframe(shlaa_gdf[["area_m2","area_ha"]].describe())
