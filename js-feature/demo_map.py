@@ -8,6 +8,7 @@ from shapely.geometry import Point, Polygon
 from streamlit_folium import st_folium
 from demo_data import generate_dummy_data
 from demo_data import load_shapefile
+import glob
 
 # Setup
 os.environ['SHAPE_RESTORE_SHX'] = 'YES'
@@ -21,7 +22,8 @@ if 'demo_data' not in st.session_state:
 constraints_gdf, housing_demand_gdf = st.session_state.demo_data
 
 # Load the SHP file for SHLAA Sites (from the 'data' folder)
-shp_file_path = "data/londonshlaa.shp"  
+
+shp_file_path = "data/London/londonshlaa.shp"  
 
 # Load SHLAA sites from the shapefile
 shlaa_gdf = load_shapefile(shp_file_path)
