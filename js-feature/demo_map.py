@@ -138,22 +138,28 @@ if mode == "Upload your own":
 else:
     # DEMO DATA MAP
     st.subheader("🧪 Demo Map: SHLAA and Constraints")
-    shlaa_gdf, constraints_gdf, _ = generate_dummy_data()
+    
+    # Only generate once to avoid re-renders
+    if 'demo_data' not in st.session_state:
+        st.session_state.demo_data = generate_dummy_data()
+    
+    shlaa_gdf, constraints_gdf, _ = st.session_state.demo_data
 
-    m = folium.Map(location=[51.5, 0], zoom_start=11)
+    # Center on Leeds
+    m = folium.Map(location=[53.8, -1.55], zoom_start=11)
 
     folium.GeoJson(
         shlaa_gdf,
         name="SHLAA Sites",
         style_function=lambda x: {"color": "blue", "fillOpacity": 0.5},
-        tooltip=folium.GeoJsonTooltip(fields=shlaa_gdf.columns.tolist()),
+        tooltip=folium.GeoJsonTooltip(fields=[col for col in shlaa_gdf.columns if col != 'geometry']),
     ).add_to(m)
 
     folium.GeoJson(
         constraints_gdf,
         name="Planning Constraints",
         style_function=lambda x: {"color": "red", "fillOpacity": 0.4},
-        tooltip=folium.GeoJsonTooltip(fields=constraints_gdf.columns.tolist()),
+        tooltip=folium.GeoJsonTooltip(fields=[col for col in constraints_gdf.columns if col != 'geometry']),
     ).add_to(m)
 
     folium.LayerControl().add_to(m)
