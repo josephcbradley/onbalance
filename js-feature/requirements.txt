@@ -8,5 +8,5 @@ python-dotenv
 requests
 numpy
 snowflake-connector-python
-
+streamlit_sortables
 

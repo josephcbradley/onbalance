@@ -21,6 +21,8 @@ import requests
 import io
 import warnings
 import tempfile
+from streamlit_sortables import sort_items
+from demo_data import generate_dummy_data
 
 # Allow shapefile restoration if missing .shx
 os.environ['SHAPE_RESTORE_SHX'] = 'YES'
@@ -131,3 +133,38 @@ st_folium(m, width=1000, height=600)
 # 7. Show SHLAA area summary
 st.subheader("📋 SHLAA Site Areas")
 st.dataframe(shlaa_gdf[["area_m2","area_ha"]].describe())
+
+
+# Load demo data
+if 'demo_data' not in st.session_state:
+    st.session_state.demo_data = generate_dummy_data()
+constraints_gdf, housing_demand_gdf = st.session_state.demo_data
+
+
+# Display the map in Streamlit
+# Layout: Split into two columns (map on left, controls on right) - removed the left col
+left_col, right_col = st.columns([2, 1])
+
+with right_col:
+    st.subheader("📊 Rank Constraints")
+    st.markdown("Drag and drop to rank constraints from most to least important.")
+
+    # Unique constraints as list
+    unique_constraints = list(constraints_gdf["constraint_type"].unique())
+
+    # Initialize state if not present
+    if "constraint_order" not in st.session_state:
+        st.session_state.constraint_order = unique_constraints
+
+    # Drag-and-drop sorting
+    sorted_constraints = sort_items(st.session_state.constraint_order, direction="vertical")
+    st.session_state.constraint_order = sorted_constraints
+
+    # Display rankings in a table
+    rankings_df = pd.DataFrame({
+        "Constraint Type": sorted_constraints,
+        "Rank (1 = Most Important)": list(range(1, len(sorted_constraints) + 1))
+    })
+
+    right_col.markdown("### 📋 Your Rankings")
+    right_col.dataframe(rankings_df, use_container_width=True)
