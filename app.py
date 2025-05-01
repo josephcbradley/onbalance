@@ -133,7 +133,7 @@ def get_constraint_info(broken_constraints, density):
     return st.session_state[cache_key]
 
 # Create tabs for different sections of the app
-st.title("📍 OnBalance: A  tool for planning with fewer see-saws.")
+st.title(":hammer_and_wrench: OnBalance: Break Constraints to Build Enough Homes")
 
 # Initialize session state for configuration
 if "density" not in st.session_state:
@@ -162,12 +162,12 @@ if "show_map" not in st.session_state:
 site_constraints = st.session_state.site_constraints
 
 # Main tabs
-tab1, tab2, tab3 = st.tabs(["📊 Housing Supply Analysis", "🗺️ Interactive Map", "⚙️ Configuration"])
+#tab1, tab2, tab3 = st.tabs(["📊 Housing Supply Analysis", "🗺️ Interactive Map", "⚙️ Configuration"])
 
 # Tab 1: Housing Supply Analysis
-with tab1:
+with st.container():
     # Configuration panel at the top in a compact form
-    st.subheader(":hammer_and_wrench: Break Constraints to Build Enough Homes")
+    #st.subheader(":hammer_and_wrench: Break Constraints to Build Enough Homes")
     progress_container = st.container()
     config_container, map_container = st.columns([1, 1.5])
     
@@ -280,9 +280,15 @@ with tab1:
                 shlaa_viz['constraint_count'] = [len(site_constraints.get(idx, [])) for idx in shlaa_viz.index]
                 st.session_state.shlaa_viz = shlaa_viz
             
+            shlaa_viz = get_shlaa_viz(
+                shlaa_gdf,
+                site_constraints,
+                st.session_state.density
+            )
             # Use the cached visualization data
-            shlaa_viz = st.session_state.shlaa_viz
+            #shlaa_viz = st.session_state.shlaa_viz
             
+            fg_shlaa = folium.FeatureGroup(name="SHLAA Sites")
             
             # Add SHLAA sites with color coding
             folium.GeoJson(
@@ -290,11 +296,12 @@ with tab1:
                 name="SHLAA Sites",
                 style_function=site_style_function,
                 tooltip=folium.GeoJsonTooltip(
-                    fields=["area_ha", "constraints", "constraint_count"],
-                    aliases=["Area (ha):", "Constraints:", "Number of Constraints:"],
+                    fields=["area_ha", "constraints", "houses", "constraint_count"],
+                    aliases=["Area (ha):", "Constraints:", "# of houses", "Number of Constraints:"],
                     localize=True
                 )
-            ).add_to(m)
+            ).add_to(fg_shlaa)
+            m.add_child(fg_shlaa)
                 
                 
             # Add a legend (as HTML)
@@ -319,7 +326,9 @@ with tab1:
             folium.LayerControl().add_to(m)
             
             # Display the map
-            st_folium(m, width=None, height=600, use_container_width=True)
+            st_folium(m, width=None, height=600, use_container_width=True,
+                      feature_group_to_add = fg_shlaa,
+                      returned_objects = [])
 
 
 
@@ -327,77 +336,77 @@ with tab1:
         
 
 
-    # Show comprehensive results
-    st.subheader("📈 Progressive Housing Supply Analysis")
-    
-    results_col1, results_col2 = st.columns([2, 1])
-    
-    with results_col1:
-        # Add a bar chart to visualize housing supply by constraint violation
-        fig = go.Figure()
-        
-        # Add bars for each level of constraint violation
-        fig.add_trace(go.Bar(
-            x=supply_results['stage'],
-            y=supply_results['additional_dwellings'],
-            name='Additional Dwellings',
-            marker_color='royalblue',
-            hovertemplate='%{y:,} additional dwellings<br>by %{x}'
-        ))
-        
-        # Add line for cumulative total
-        fig.add_trace(go.Scatter(
-            x=supply_results['stage'],
-            y=supply_results['cumulative_dwellings'],
-            mode='lines+markers',
-            name='Cumulative Dwellings',
-            marker=dict(color='red'),
-            line=dict(width=3),
-            hovertemplate='%{y:,} total dwellings<br>by %{x}'
-        ))
-        
-        # Add target line
-        fig.add_shape(
-            type="line",
-            xref="paper",
-            yref="y",
-            x0=0,
-            y0=st.session_state.housing_target,
-            x1=1,
-            y1=st.session_state.housing_target,
-            line=dict(
-                color="green",
-                width=2,
-                dash="dash",
-            ),
-            name="Housing Target"
-        )
-        
-        # Add annotation for the target
-        fig.add_annotation(
-            xref="paper",
-            yref="y",
-            x=0.02,
-            y=st.session_state.housing_target,
-            text=f"Target: {st.session_state.housing_target:,}",
-            showarrow=False,
-            font=dict(color="green", size=12),
-            bgcolor="white",
-            bordercolor="green",
-            borderwidth=1
-        )
-        
-        # Update layout
-        fig.update_layout(
-            title="Housing Supply by Breaking Constraints",
-            xaxis_title="Constraint Breaking Stage",
-            yaxis_title="Number of Dwellings",
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-            margin=dict(l=20, r=20, t=40, b=20),
-            height=400
-        )
-        
-        st.plotly_chart(fig, use_container_width=True)
+    ## Show comprehensive results
+    #st.subheader("📈 Progressive Housing Supply Analysis")
+    #
+    #results_col1, results_col2 = st.columns([2, 1])
+    #
+    #with results_col1:
+    #    # Add a bar chart to visualize housing supply by constraint violation
+    #    fig = go.Figure()
+    #    
+    #    # Add bars for each level of constraint violation
+    #    fig.add_trace(go.Bar(
+    #        x=supply_results['stage'],
+    #        y=supply_results['additional_dwellings'],
+    #        name='Additional Dwellings',
+    #        marker_color='royalblue',
+    #        hovertemplate='%{y:,} additional dwellings<br>by %{x}'
+    #    ))
+    #    
+    #    # Add line for cumulative total
+    #    fig.add_trace(go.Scatter(
+    #        x=supply_results['stage'],
+    #        y=supply_results['cumulative_dwellings'],
+    #        mode='lines+markers',
+    #        name='Cumulative Dwellings',
+    #        marker=dict(color='red'),
+    #        line=dict(width=3),
+    #        hovertemplate='%{y:,} total dwellings<br>by %{x}'
+    #    ))
+    #    
+    #    # Add target line
+    #    fig.add_shape(
+    #        type="line",
+    #        xref="paper",
+    #        yref="y",
+    #        x0=0,
+    #        y0=st.session_state.housing_target,
+    #        x1=1,
+    #        y1=st.session_state.housing_target,
+    #        line=dict(
+    #            color="green",
+    #            width=2,
+    #            dash="dash",
+    #        ),
+    #        name="Housing Target"
+    #    )
+    #    
+    #    # Add annotation for the target
+    #    fig.add_annotation(
+    #        xref="paper",
+    #        yref="y",
+    #        x=0.02,
+    #        y=st.session_state.housing_target,
+    #        text=f"Target: {st.session_state.housing_target:,}",
+    #        showarrow=False,
+    #        font=dict(color="green", size=12),
+    #        bgcolor="white",
+    #        bordercolor="green",
+    #        borderwidth=1
+    #    )
+    #    
+    #    # Update layout
+    #    fig.update_layout(
+    #        title="Housing Supply by Breaking Constraints",
+    #        xaxis_title="Constraint Breaking Stage",
+    #        yaxis_title="Number of Dwellings",
+    #        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    #        margin=dict(l=20, r=20, t=40, b=20),
+    #        height=400
+    #    )
+    #    
+    #    st.plotly_chart(fig, use_container_width=True)
     
     #with results_col2:
     #    # Show detailed results table
@@ -428,103 +437,103 @@ with tab1:
     #    st.markdown(f"**Maximum Capacity:** {total_potential_dwellings:,} homes")
 
 # Tab 2: Interactive Map
-with tab2:
-    st.subheader("🗺️ Buildable Supply Map with Constraints")
-    
-    map_container = st.container()
-
-    with map_container:
-        # Map configuration options
-        map_col1, map_col2, map_col3 = st.columns(3)
-        
-        with map_col1:
-            show_shlaa = st.checkbox("Show SHLAA Sites", value=True)
-        
-        with map_col2:
-            show_constraints = st.checkbox("Show Constraints", value=True)
-        
-        with map_col3:
-            # Select constraint layers to display
-            st.session_state.selected_constraints = st.multiselect(
-                "Constraint layers to show:",
-                list(constraint_layers.keys()),
-                default=st.session_state.selected_constraints
-            )
-        
-        # Only generate the map if it should be shown (performance optimization)
-        if show_shlaa or show_constraints:
-            # Create base map
-            m = folium.Map(
-                location=[shlaa_gdf.geometry.centroid.y.mean(), shlaa_gdf.geometry.centroid.x.mean()],
-                zoom_start=11
-            )
-            
-            if show_shlaa:
-                # Cache map data preparation in session state if not already cached
-                if 'shlaa_viz' not in st.session_state:
-                    shlaa_viz = shlaa_gdf.copy()
-                    shlaa_viz['constraints'] = [', '.join(site_constraints.get(idx, [])) for idx in shlaa_viz.index]
-                    shlaa_viz['constraint_count'] = [len(site_constraints.get(idx, [])) for idx in shlaa_viz.index]
-                    st.session_state.shlaa_viz = shlaa_viz
-                
-                # Use the cached visualization data
-                shlaa_viz = st.session_state.shlaa_viz
-                
-                # Add SHLAA sites with color coding
-                folium.GeoJson(
-                    shlaa_viz,
-                    name="SHLAA Sites",
-                    style_function=site_style_function,
-                    tooltip=folium.GeoJsonTooltip(
-                        fields=["area_ha", "constraints", "constraint_count"],
-                        aliases=["Area (ha):", "Constraints:", "Number of Constraints:"],
-                        localize=True
-                    )
-                ).add_to(m)
-            
-            if show_constraints:
-                # Add constraint layers with pre-defined colors
-                colors = {name: col for name, col in zip(
-                    constraint_layers.keys(),
-                    constraint_colors[:len(constraint_layers)]
-                )}
-                
-                for name in st.session_state.selected_constraints:
-                    gdf = constraint_layers[name]["gdf"]
-                    folium.GeoJson(
-                        gdf,
-                        name=name,
-                        style_function=lambda feat, color=colors.get(name, 'red'): {
-                            "color": color,
-                            "fillOpacity": 0.2,
-                            "weight": 2
-                        },
-                        tooltip=folium.GeoJsonTooltip(
-                            fields=[f for f in gdf.columns if gdf.dtypes[f] != 'geometry']
-                        )
-                    ).add_to(m)
-            
-            # Add a legend (as HTML)
-            legend_html = '''
-            <div style="position: fixed; bottom: 50px; left: 50px; z-index: 1000; background-color: white; 
-                padding: 10px; border-radius: 5px; border: 1px solid grey; opacity: 0.8;">
-                <p><strong>SHLAA Sites by Constraints</strong></p>
-                <p><i style="background: #00CC00; opacity: 0.8; width: 20px; height: 14px; 
-                    display: inline-block; margin-right: 5px;"></i>No constraints</p>
-                <p><i style="background: #FFCC00; opacity: 0.6; width: 20px; height: 14px; 
-                    display: inline-block; margin-right: 5px;"></i>1 constraint</p>
-                <p><i style="background: #FF9900; opacity: 0.5; width: 20px; height: 14px; 
-                    display: inline-block; margin-right: 5px;"></i>2 constraints</p>
-                <p><i style="background: #FF0000; opacity: 0.4; width: 20px; height: 14px; 
-                    display: inline-block; margin-right: 5px;"></i>3+ constraints</p>
-            </div>
-            '''
-            
-            m.get_root().html.add_child(folium.Element(legend_html))
-            
-            # Add layer control
-            folium.LayerControl().add_to(m)
-            
-            # Display the map
-            st_folium(m, width=None, height=600, use_container_width=True)
+#with tab2:
+#    st.subheader("🗺️ Buildable Supply Map with Constraints")
+#    
+#    map_container = st.container()
+#
+#    with map_container:
+#        # Map configuration options
+#        map_col1, map_col2, map_col3 = st.columns(3)
+#        
+#        with map_col1:
+#            show_shlaa = st.checkbox("Show SHLAA Sites", value=True)
+#        
+#        with map_col2:
+#            show_constraints = st.checkbox("Show Constraints", value=True)
+#        
+#        with map_col3:
+#            # Select constraint layers to display
+#            st.session_state.selected_constraints = st.multiselect(
+#                "Constraint layers to show:",
+#                list(constraint_layers.keys()),
+#                default=st.session_state.selected_constraints
+#            )
+#        
+#        # Only generate the map if it should be shown (performance optimization)
+#        if show_shlaa or show_constraints:
+#            # Create base map
+#            m = folium.Map(
+#                location=[shlaa_gdf.geometry.centroid.y.mean(), shlaa_gdf.geometry.centroid.x.mean()],
+#                zoom_start=11
+#            )
+#            
+#            if show_shlaa:
+#                # Cache map data preparation in session state if not already cached
+#                if 'shlaa_viz' not in st.session_state:
+#                    shlaa_viz = shlaa_gdf.copy()
+#                    shlaa_viz['constraints'] = [', '.join(site_constraints.get(idx, [])) for idx in shlaa_viz.index]
+#                    shlaa_viz['constraint_count'] = [len(site_constraints.get(idx, [])) for idx in shlaa_viz.index]
+#                    st.session_state.shlaa_viz = shlaa_viz
+#                
+#                # Use the cached visualization data
+#                shlaa_viz = st.session_state.shlaa_viz
+#                
+#                # Add SHLAA sites with color coding
+#                folium.GeoJson(
+#                    shlaa_viz,
+#                    name="SHLAA Sites",
+#                    style_function=site_style_function,
+#                    tooltip=folium.GeoJsonTooltip(
+#                        fields=["area_ha", "constraints", "constraint_count"],
+#                        aliases=["Area (ha):", "Constraints:", "Number of Constraints:"],
+#                        localize=True
+#                    )
+#                ).add_to(m)
+#            
+#            if show_constraints:
+#                # Add constraint layers with pre-defined colors
+#                colors = {name: col for name, col in zip(
+#                    constraint_layers.keys(),
+#                    constraint_colors[:len(constraint_layers)]
+#                )}
+#                
+#                for name in st.session_state.selected_constraints:
+#                    gdf = constraint_layers[name]["gdf"]
+#                    folium.GeoJson(
+#                        gdf,
+#                        name=name,
+#                        style_function=lambda feat, color=colors.get(name, 'red'): {
+#                            "color": color,
+#                            "fillOpacity": 0.2,
+#                            "weight": 2
+#                        },
+#                        tooltip=folium.GeoJsonTooltip(
+#                            fields=[f for f in gdf.columns if gdf.dtypes[f] != 'geometry']
+#                        )
+#                    ).add_to(m)
+#            
+#            # Add a legend (as HTML)
+#            legend_html = '''
+#            <div style="position: fixed; bottom: 50px; left: 50px; z-index: 1000; background-color: white; 
+#                padding: 10px; border-radius: 5px; border: 1px solid grey; opacity: 0.8;">
+#                <p><strong>SHLAA Sites by Constraints</strong></p>
+#                <p><i style="background: #00CC00; opacity: 0.8; width: 20px; height: 14px; 
+#                    display: inline-block; margin-right: 5px;"></i>No constraints</p>
+#                <p><i style="background: #FFCC00; opacity: 0.6; width: 20px; height: 14px; 
+#                    display: inline-block; margin-right: 5px;"></i>1 constraint</p>
+#                <p><i style="background: #FF9900; opacity: 0.5; width: 20px; height: 14px; 
+#                    display: inline-block; margin-right: 5px;"></i>2 constraints</p>
+#                <p><i style="background: #FF0000; opacity: 0.4; width: 20px; height: 14px; 
+#                    display: inline-block; margin-right: 5px;"></i>3+ constraints</p>
+#            </div>
+#            '''
+#            
+#            m.get_root().html.add_child(folium.Element(legend_html))
+#            
+#            # Add layer control
+#            folium.LayerControl().add_to(m)
+#            
+#            # Display the map
+#            st_folium(m, width=None, height=600, use_container_width=True)
 
