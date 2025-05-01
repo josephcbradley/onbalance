@@ -27,8 +27,6 @@ import warnings
 import tempfile
 import plotly.graph_objects as go
 from streamlit_sortables import sort_items
-from openai import AzureOpenAI
-
 
 
 @st.cache_data(

@@ -13,3 +13,4 @@ requests
 snowflake-connector-python
 streamlit-sortables
 streamlit-folium
+openai
