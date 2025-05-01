@@ -146,17 +146,19 @@ with tab1:
     config_col1, config_col2 = st.columns(2)
     
     with config_col1:
-        st.session_state.density = st.number_input(
+        st.session_state.density = st.slider(
             "Housing Density (dwellings/ha)", 
             min_value=20, 
             max_value=120, 
+            step = 5,
             value=st.session_state.density
         )
     with config_col2:
-        st.session_state.housing_target = st.number_input(
+        st.session_state.housing_target = st.slider(
             "Housing Target (dwellings)", 
             min_value=1000, 
             max_value=500000, 
+            step = 1000,
             value=st.session_state.housing_target
         )
     
