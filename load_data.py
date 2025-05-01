@@ -60,14 +60,13 @@ def generate_dummy_data():
 def load_constraints():
 
     constraint_layers = {
-        "High risk flood zone": {"path" : "./data/unified_geojson/Flood_Risk_Area_unified.geojson",},
-        "Mid risk flood zone": {"path" : "./data/unified_geojson/Flood_Zone_2_unified.geojson",},
-        "Low risk flood zone":{"path" :  "./data/unified_geojson/Flood_Zone_3_unified.geojson",},
+        #"High risk flood zone": {"path" : "./data/unified_geojson/Flood_Risk_Area_unified.geojson",},
+        #"Mid risk flood zone": {"path" : "./data/unified_geojson/Flood_Zone_2_unified.geojson",},
+        #"Low risk flood zone":{"path" :  "./data/unified_geojson/Flood_Zone_3_unified.geojson",},
         "Green Belt": {"path" : "./data/unified_geojson/Green_Belt_unified.geojson",},
-        "Historic Park And Garden": {"path" : "./data/unified_geojson/Historic_Park_And_Garden_unified.geojson",},
+        #"Historic Park And Garden": {"path" : "./data/unified_geojson/Historic_Park_And_Garden_unified.geojson",},
         "Ancient Woodland": {"path" : "./data/unified_geojson/Ancient_Woodland_unified.geojson",},
-        "Open Space": {"path" : "./data/unified_geojson/Open_Space_unified.geojson",},
-
+        #"Open Space": {"path" : "./data/unified_geojson/Open_Space_unified.geojson",},
     }
 
     for name, layer in constraint_layers.items():
@@ -117,8 +116,18 @@ def identify_site_constraints(shlaa_gdf, constraint_layers):
     
     return constraint_intersection
 
-def calculate_buildable_supply(shlaa_gdf, constraint_intersections, constraint_ranking, density):
-    """Calculate buildable housing supply based on prioritized constraints"""
+def calculate_buildable_supply(shlaa_gdf, constraint_intersections, broken_constraints, density):
+    """Calculate buildable housing supply based on which constraints are broken
+    
+    Args:
+        shlaa_gdf: GeoDataFrame of SHLAA sites
+        constraint_intersections: Dict mapping site index to list of constraints affecting it
+        broken_constraints: List of constraints that are allowed to be broken (in order)
+        density: Housing density (dwellings per hectare)
+        
+    Returns:
+        DataFrame of results, total dwellings that can be built
+    """
     # Create a copy to avoid modifying the original
     supply_df = shlaa_gdf.copy()
     
@@ -128,44 +137,59 @@ def calculate_buildable_supply(shlaa_gdf, constraint_intersections, constraint_r
     # Generate potential dwellings for each site based on area and density
     supply_df['potential_dwellings'] = (supply_df['area_ha'] * density).astype(int)
     
-    # Calculate which sites are available based on constraint rankings
+    # Calculate which sites are available as we break constraints
     results = []
-    total_dwellings = 0
     cumulative_dwellings = 0
     
-    # Start with completely unconstrained sites
+    # Start with sites that don't violate any constraints
     available_sites = supply_df[supply_df['constraint_violations'].apply(lambda x: len(x) == 0)]
     unconstrained_dwellings = available_sites['potential_dwellings'].sum()
-    total_dwellings += unconstrained_dwellings
     cumulative_dwellings += unconstrained_dwellings
     
     results.append({
-        'constraints_violated': "None",
+        'stage': "No constraints broken",
+        'newly_broken_constraint': "None",
         'sites_count': len(available_sites),
-        'dwellings': unconstrained_dwellings,
+        'additional_dwellings': unconstrained_dwellings,
         'cumulative_dwellings': cumulative_dwellings
     })
     
-    # Progressively add sites by violating constraints in priority order
-    for i, constraint in enumerate(constraint_ranking):
-        # Find sites that only violate this constraint and previous prioritized constraints
-        allowed_constraints = constraint_ranking[:i+1]
-        constraint_sites = supply_df[supply_df['constraint_violations'].apply(
-            lambda x: all(cons in allowed_constraints for cons in x) and len(x) > 0
-        )]
+    # Progressively add sites as we break constraints in the specified order
+    for i, constraint in enumerate(broken_constraints):
+        # Which constraints can be broken at this stage
+        allowed_to_break = set(broken_constraints[:i+1])
         
-        constraint_dwellings = constraint_sites['potential_dwellings'].sum()
-        total_dwellings += constraint_dwellings
+        # Find sites that become available at this stage (only violate constraints we're allowing to break)
+        # These are sites that:
+        # 1. Have at least one constraint violation (so they weren't already counted)
+        # 2. Only violate constraints that we're now allowing to break
+        newly_available_sites = supply_df[
+            (supply_df['constraint_violations'].apply(lambda x: len(x) > 0)) &  # Has constraints
+            (supply_df['constraint_violations'].apply(
+                lambda x: all(cons in allowed_to_break for cons in x)  # Only violates allowed constraints
+            ))
+        ]
+        
+        # Get sites that specifically become available due to breaking this constraint
+        # (they must violate this constraint and maybe previous broken constraints, but nothing else)
+        this_constraint_sites = newly_available_sites[
+            newly_available_sites['constraint_violations'].apply(
+                lambda x: constraint in x  # Must violate this constraint
+            )
+        ]
+        
+        constraint_dwellings = this_constraint_sites['potential_dwellings'].sum()
         cumulative_dwellings += constraint_dwellings
         
         results.append({
-            'constraints_violated': f"Up to {constraint}",
-            'sites_count': len(constraint_sites),
-            'dwellings': constraint_dwellings,
+            'stage': f"After breaking {len(allowed_to_break)} constraint(s)",
+            'newly_broken_constraint': constraint,
+            'sites_count': len(this_constraint_sites),
+            'additional_dwellings': constraint_dwellings,
             'cumulative_dwellings': cumulative_dwellings
         })
     
-    return pd.DataFrame(results), total_dwellings
+    return pd.DataFrame(results), cumulative_dwellings
 
 shlaa_gdf = gpd.read_file("./data/London_SHLAA_2017_approvals_and_allocations/London_SHLAA_2017_approvals_and_allocations.geojson")
 
