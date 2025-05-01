@@ -226,23 +226,6 @@ with tab1:
                 constraint_suggestion = remaining_constraints[0]
                 st.info(f"Try breaking the '{constraint_suggestion}' constraint to allow more housing development.")
             
-            # Create progress bar
-            st.progress(min(1.0, total_potential / st.session_state.housing_target), text=f"{available_percent}% of target")
-            
-            if target_met:
-                st.success(f"✅ Target can be met! {total_potential:,} potential homes vs {st.session_state.housing_target:,} target")
-            else:
-                st.error(f"❌ Target cannot be met. {total_potential:,} potential homes vs {st.session_state.housing_target:,} target")
-                
-                # Calculate how many constraints need to be violated
-                # Find the first row where cumulative dwellings exceeds the target
-                constraints_needed = "All"
-                for i, row in supply_results.iterrows():
-                    if row['cumulative_dwellings'] >= st.session_state.housing_target:
-                        constraints_needed = row['constraints_violated']
-                        break
-                
-                st.info(f"To reach the target, you would need to allow building in areas with: {constraints_needed}")
             
             # Add submit button that doesn't do anything
             st.button("Submit!", type="primary", use_container_width=True)   
