@@ -43,17 +43,17 @@ if 'site_constraints' not in st.session_state:
     st.session_state.site_constraints = identify_site_constraints(shlaa_gdf, constraint_layers)
     
 # Function for cached access to constraint information
-def get_constraint_info(sorted_constraints, density):
-    """Helper function to get cached supply results by constraint ranking"""
-    # Create a cache key from the constraint order and density
-    cache_key = f"supply_{'-'.join(sorted_constraints)}_{density}"
+def get_constraint_info(broken_constraints, density):
+    """Helper function to get cached supply results by broken constraints list"""
+    # Create a cache key from the broken constraints and density
+    cache_key = f"supply_{'-'.join(broken_constraints)}_{density}"
     
     if cache_key not in st.session_state:
         # Calculate and cache the results
         results, potential = calculate_buildable_supply(
             shlaa_gdf, 
             st.session_state.site_constraints, 
-            sorted_constraints,
+            broken_constraints,
             density
         )
         st.session_state[cache_key] = (results, potential)
@@ -67,12 +67,16 @@ st.title("📍 Buildable Housing Supply Explorer")
 if "density" not in st.session_state:
     st.session_state.density = 50
 if "housing_target" not in st.session_state:
-    st.session_state.housing_target = 50000
+    st.session_state.housing_target = 500000
 if "selected_constraints" not in st.session_state:
-    # Start with just a few constraints selected by default for performance
+    # Start with just a few constraint layers shown on the map for performance
     st.session_state.selected_constraints = list(constraint_layers.keys())[:3]
-if "constraint_order" not in st.session_state:
-    st.session_state.constraint_order = list(constraint_layers.keys())
+if "active_constraints" not in st.session_state:
+    # Start with all constraints active (none broken)
+    st.session_state.active_constraints = list(constraint_layers.keys())
+if "broken_constraints" not in st.session_state:
+    # Start with no broken constraints
+    st.session_state.broken_constraints = []
 if "show_map" not in st.session_state:
     st.session_state.show_map = True
 
@@ -103,65 +107,70 @@ with tab1:
             value=st.session_state.housing_target
         )
     
-    # Prioritize Constraints section
-    st.subheader("📊 Prioritize Constraints")
+    # Constraint breaking section
+    st.subheader("📊 Break Constraints to Meet Housing Target")
     st.markdown("""
-    Drag and drop to rank constraints from most to least important to preserve.
-    Lower ranked constraints are violated first when necessary to meet housing targets.
+    Drag constraints from the 'Active Constraints' column to the 'Broken Constraints' column to allow building in those areas.
+    The order in the 'Broken Constraints' column determines the priority - constraints at the top are broken first.
     """)
     
-    # Unique constraints as list (we don't need all constraints for ranking)
-    unique_constraints = list(constraint_layers.keys())
+    # Set up the initial containers for the sortable constraints
+    if "sortable_items" not in st.session_state:
+        st.session_state.sortable_items = [
+            {'header': 'Active Constraints', 'items': list(constraint_layers.keys())},
+            {'header': 'Broken Constraints', 'items': []}
+        ]
+
+    # Drag-and-drop sorting between active and broken constraints
+    sorted_constraint_lists = sort_items(
+        st.session_state.sortable_items, 
+        direction="vertical", 
+        key="constraint_containers", 
+        multi_containers=True
+    )
     
-    # Drag-and-drop sorting
-    sorted_constraints = sort_items(st.session_state.constraint_order, direction="vertical")
-    st.session_state.constraint_order = sorted_constraints
-    
-    # Display rankings in a table
-    left_panel, right_panel = st.columns([1, 2])
-    
-    with left_panel:
-        rankings_df = pd.DataFrame({
-            "Constraint Type": sorted_constraints,
-            "Rank (1 = Most Important)": list(range(1, len(sorted_constraints) + 1))
-        })
+    # Update session state with the current active and broken constraints
+    if sorted_constraint_lists:
+        # Save the current state
+        st.session_state.sortable_items = sorted_constraint_lists
         
-        st.markdown("### 📋 Your Constraint Rankings")
-        st.dataframe(rankings_df, use_container_width=True)
+        # Extract active and broken constraints
+        st.session_state.active_constraints = sorted_constraint_lists[0].get('items', [])
+        st.session_state.broken_constraints = sorted_constraint_lists[1].get('items', [])
     
-    # Calculate housing supply based on priorities
-    if len(sorted_constraints) > 0:
-        # Use our cached calculation function
-        supply_results, total_potential = get_constraint_info(
-            sorted_constraints,
-            st.session_state.density
-        )
+    # Create a container for the progress display
+    progress_container = st.container()
+    
+    # Calculate housing supply based on broken constraints
+    broken_constraints = st.session_state.broken_constraints
+    
+    # Use our cached calculation function
+    supply_results, total_potential = get_constraint_info(
+        broken_constraints,
+        st.session_state.density
+    )
         
-        with right_panel:
-            # Display housing target progress
-            st.markdown("### 🏠 Housing Supply vs Target")
+    with progress_container:
+        # Display housing target progress
+        st.markdown("### 🏠 Housing Supply vs Target")
+        
+        target_met = total_potential >= st.session_state.housing_target
+        available_percent = min(100, round((total_potential / st.session_state.housing_target) * 100, 1))
+        
+        # Create progress bar
+        st.progress(min(1.0, total_potential / st.session_state.housing_target), text=f"{available_percent}% of target")
+        
+        if target_met:
+            st.success(f"✅ Target can be met! {total_potential:,} potential homes vs {st.session_state.housing_target:,} target")
+        else:
+            st.error(f"❌ Target cannot be met. {total_potential:,} potential homes vs {st.session_state.housing_target:,} target")
             
-            target_met = total_potential >= st.session_state.housing_target
-            available_percent = min(100, round((total_potential / st.session_state.housing_target) * 100, 1))
+            # Figure out which additional constraints need to be broken
+            remaining_constraints = st.session_state.active_constraints
+            if remaining_constraints:
+                constraint_suggestion = remaining_constraints[0]
+                st.info(f"Try breaking the '{constraint_suggestion}' constraint to allow more housing development.")
             
-            # Create progress bar
-            st.progress(min(1.0, total_potential / st.session_state.housing_target), text=f"{available_percent}% of target")
-            
-            if target_met:
-                st.success(f"✅ Target can be met! {total_potential:,} potential homes vs {st.session_state.housing_target:,} target")
-            else:
-                st.error(f"❌ Target cannot be met. {total_potential:,} potential homes vs {st.session_state.housing_target:,} target")
-                
-                # Calculate how many constraints need to be violated
-                # Find the first row where cumulative dwellings exceeds the target
-                constraints_needed = "All"
-                for i, row in supply_results.iterrows():
-                    if row['cumulative_dwellings'] >= st.session_state.housing_target:
-                        constraints_needed = row['constraints_violated']
-                        break
-                
-                st.info(f"To reach the target, you would need to allow building in areas with: {constraints_needed}")
-    
     # Show comprehensive results
     st.subheader("📈 Progressive Housing Supply Analysis")
     
@@ -173,20 +182,22 @@ with tab1:
         
         # Add bars for each level of constraint violation
         fig.add_trace(go.Bar(
-            x=supply_results['constraints_violated'],
-            y=supply_results['dwellings'],
+            x=supply_results['stage'],
+            y=supply_results['additional_dwellings'],
             name='Additional Dwellings',
-            marker_color='royalblue'
+            marker_color='royalblue',
+            hovertemplate='%{y:,} additional dwellings<br>by %{x}'
         ))
         
         # Add line for cumulative total
         fig.add_trace(go.Scatter(
-            x=supply_results['constraints_violated'],
+            x=supply_results['stage'],
             y=supply_results['cumulative_dwellings'],
             mode='lines+markers',
             name='Cumulative Dwellings',
             marker=dict(color='red'),
-            line=dict(width=3)
+            line=dict(width=3),
+            hovertemplate='%{y:,} total dwellings<br>by %{x}'
         ))
         
         # Add target line
@@ -222,8 +233,8 @@ with tab1:
         
         # Update layout
         fig.update_layout(
-            title="Housing Supply by Constraint Priority",
-            xaxis_title="Constraints Violated",
+            title="Housing Supply by Breaking Constraints",
+            xaxis_title="Constraint Breaking Stage",
             yaxis_title="Number of Dwellings",
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
             margin=dict(l=20, r=20, t=40, b=20),
@@ -233,9 +244,20 @@ with tab1:
         st.plotly_chart(fig, use_container_width=True)
     
     with results_col2:
-        # Show staged results table
+        # Show detailed results table
         st.markdown("### Progressive Supply Details")
-        st.dataframe(supply_results, use_container_width=True)
+        
+        # Add a column showing which constraint was newly broken at each stage
+        display_df = supply_results.rename(columns={
+            'newly_broken_constraint': 'Newly Broken Constraint',
+            'additional_dwellings': 'Additional Dwellings',
+            'cumulative_dwellings': 'Total Dwellings',
+            'sites_count': 'New Sites'
+        })
+        
+        # Remove the stage column and display the rest
+        st.dataframe(display_df[['Newly Broken Constraint', 'New Sites', 'Additional Dwellings', 'Total Dwellings']], 
+                    use_container_width=True)
         
         # SHLAA site statistics
         st.markdown("### 📊 SHLAA Site Statistics")
@@ -248,10 +270,6 @@ with tab1:
         st.markdown(f"**Total Sites:** {len(shlaa_gdf)}")
         st.markdown(f"**Total Area:** {total_area_ha:.2f} hectares")
         st.markdown(f"**Maximum Capacity:** {total_potential_dwellings:,} homes")
-        
-        # Display detailed SHLAA statistics in an expander
-        with st.expander("Detailed Area Statistics"):
-            st.dataframe(shlaa_gdf[["area_m2", "area_ha"]].describe())
 
 # Tab 2: Interactive Map
 with tab2:
