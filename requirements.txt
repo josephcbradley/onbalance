@@ -1,0 +1,15 @@
+geopandas
+fiona
+pyproj
+shapely
+folium
+numpy
+streamlit
+pandas
+plotly
+altair
+python-dotenv
+requests
+snowflake-connector-python
+streamlit_sortables
+streamlit_folium
