@@ -11,5 +11,5 @@ altair
 python-dotenv
 requests
 snowflake-connector-python
-streamlit_sortables
-streamlit_folium
+streamlit-sortables
+streamlit-folium
