@@ -376,16 +376,17 @@ with tab2:
                 }
             
             # Add SHLAA sites with color coding
+            fg_shlaa = folium.FeatureGroup(name="SHLAA Sites")
             folium.GeoJson(
                 shlaa_viz,
-                name="SHLAA Sites",
                 style_function=site_style_function,
                 tooltip=folium.GeoJsonTooltip(
-                    fields=["area_ha", "constraints", "constraint_count", "houses"],
-                    aliases=["Area (ha):", "Constraints:", "Number of Constraints:", "Number of houses"],
+                    fields=["area_ha","constraints", "houses","constraint_count"],
+                    aliases=["Area (ha):", "Constraints", "Est. dwellings:","# constraints:"],
                     localize=True
                 )
-            ).add_to(m)
+            ).add_to(fg_shlaa)
+            m.add_child(fg_shlaa)
         
         if show_constraints:
             # Add constraint layers with pre-defined colors
@@ -429,9 +430,17 @@ with tab2:
         
         # Add layer control
         folium.LayerControl().add_to(m)
-        
-        # Display the map
-        st_folium(m, width=None, height=600, use_container_width=True)
+        # Render without re-drawing tiles on every pan/zoom
+        st_folium(
+            m,
+            width=None,
+            height=600,
+            center=[shlaa_gdf.geometry.centroid.y.mean(), shlaa_gdf.geometry.centroid.x.mean()],
+            zoom=11,
+            feature_group_to_add=fg_shlaa,
+            # ← this disables any map‐event based reruns
+            returned_objects=[]
+        )
 
 # Tab 3: Configuration
 with tab3:
