@@ -62,11 +62,11 @@ def load_constraints():
     constraint_layers = {
         #"High risk flood zone": {"path" : "./data/unified_geojson/Flood_Risk_Area_unified.geojson",},
         #"Mid risk flood zone": {"path" : "./data/unified_geojson/Flood_Zone_2_unified.geojson",},
-        #"Low risk flood zone":{"path" :  "./data/unified_geojson/Flood_Zone_3_unified.geojson",},
+        "Low risk flood zone":{"path" :  "./data/unified_geojson/Flood_Zone_3_unified.geojson",},
         "Green Belt": {"path" : "./data/unified_geojson/Green_Belt_unified.geojson",},
-        #"Historic Park And Garden": {"path" : "./data/unified_geojson/Historic_Park_And_Garden_unified.geojson",},
+        "Historic Park And Garden": {"path" : "./data/unified_geojson/Historic_Park_And_Garden_unified.geojson",},
         "Ancient Woodland": {"path" : "./data/unified_geojson/Ancient_Woodland_unified.geojson",},
-        #"Open Space": {"path" : "./data/unified_geojson/Open_Space_unified.geojson",},
+        "Open Space": {"path" : "./data/unified_geojson/Open_Space_unified.geojson",},
     }
 
     for name, layer in constraint_layers.items():
