@@ -62,11 +62,11 @@ def load_constraints():
     constraint_layers = {
         #"High risk flood zone": {"path" : "./data/unified_geojson/Flood_Risk_Area_unified.geojson",},
         #"Mid risk flood zone": {"path" : "./data/unified_geojson/Flood_Zone_2_unified.geojson",},
-        "Low risk flood zone":{"path" :  "./data/unified_geojson/Flood_Zone_3_unified.geojson",},
+        #"Low risk flood zone":{"path" :  "./data/unified_geojson/Flood_Zone_3_unified.geojson",},
         "Green Belt": {"path" : "./data/unified_geojson/Green_Belt_unified.geojson",},
-        "Historic Park And Garden": {"path" : "./data/unified_geojson/Historic_Park_And_Garden_unified.geojson",},
+        #"Historic Park And Garden": {"path" : "./data/unified_geojson/Historic_Park_And_Garden_unified.geojson",},
         "Ancient Woodland": {"path" : "./data/unified_geojson/Ancient_Woodland_unified.geojson",},
-        "Open Space": {"path" : "./data/unified_geojson/Open_Space_unified.geojson",},
+        #"Open Space": {"path" : "./data/unified_geojson/Open_Space_unified.geojson",},
     }
 
     for name, layer in constraint_layers.items():
@@ -172,22 +172,13 @@ def calculate_buildable_supply(shlaa_gdf, constraint_intersections, broken_const
         
         # Get sites that specifically become available due to breaking this constraint
         # (they must violate this constraint and maybe previous broken constraints, but nothing else)
-        if not newly_available_sites.empty:
-            this_constraint_sites = newly_available_sites[
-                newly_available_sites['constraint_violations'].apply(
-                    lambda x: constraint in x  # Must violate this constraint
-                )
-            ]
-            
-            # Check if we got any sites
-            if not this_constraint_sites.empty:
-                constraint_dwellings = this_constraint_sites['potential_dwellings'].sum()
-            else:
-                constraint_dwellings = 0
-        else:
-            this_constraint_sites = pd.DataFrame(columns=supply_df.columns)
-            constraint_dwellings = 0
-            
+        this_constraint_sites = newly_available_sites[
+            newly_available_sites['constraint_violations'].apply(
+                lambda x: constraint in x  # Must violate this constraint
+            )
+        ]
+        
+        constraint_dwellings = this_constraint_sites['potential_dwellings'].sum()
         cumulative_dwellings += constraint_dwellings
         
         results.append({
@@ -206,5 +197,7 @@ shlaa_gdf = gpd.read_file("./data/London_SHLAA_2017_approvals_and_allocations/Lo
 shlaa_gdf = shlaa_gdf.to_crs(epsg=4326)  # Ensure it's in WGS84
 shlaa_gdf['area_m2'] = shlaa_gdf.to_crs(epsg=3857).area
 shlaa_gdf['area_ha'] = shlaa_gdf['area_m2'] / 10000
+
+
 
 constraint_layers = load_constraints()
