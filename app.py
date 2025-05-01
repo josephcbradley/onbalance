@@ -109,7 +109,7 @@ def get_constraint_info(broken_constraints, density):
     return st.session_state[cache_key]
 
 # Create tabs for different sections of the app
-st.title("📍 Buildable Housing Supply Explorer")
+st.title("📍 OnBalance: A  tool for planning with fewer see-saws.")
 
 # Initialize session state for configuration
 if "density" not in st.session_state:
