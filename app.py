@@ -163,7 +163,9 @@ with tab1:
                         break
                 
                 st.info(f"To reach the target, you would need to allow building in areas with: {constraints_needed}")
-    
+            
+            # Add submit button that doesn't do anything
+            st.button("Submit!", type="primary", use_container_width=True)   
     # Show comprehensive results
     st.subheader("📈 Progressive Housing Supply Analysis")
     
