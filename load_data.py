@@ -60,13 +60,12 @@ def generate_dummy_data():
 def load_constraints():
 
     constraint_layers = {
-        #"High risk flood zone": {"path" : "./data/unified_geojson/Flood_Risk_Area_unified.geojson",},
-        #"Mid risk flood zone": {"path" : "./data/unified_geojson/Flood_Zone_2_unified.geojson",},
-        #"Low risk flood zone":{"path" :  "./data/unified_geojson/Flood_Zone_3_unified.geojson",},
-        "Green Belt": {"path" : "./data/unified_geojson/Green_Belt_unified.geojson",},
-        #"Historic Park And Garden": {"path" : "./data/unified_geojson/Historic_Park_And_Garden_unified.geojson",},
-        "Ancient Woodland": {"path" : "./data/unified_geojson/Ancient_Woodland_unified.geojson",},
-        #"Open Space": {"path" : "./data/unified_geojson/Open_Space_unified.geojson",},
+        "Flood_or_Drainage_Risk" : {"path" : "./unified_geojson/Flood_or_Drainage_Risk_unified.geojson"},
+        "Habitat" : {"path" : "./unified_geojson/Habitat_unified.geojson"},
+        "Heritage" : {"path" : "./unified_geojson/Heritage_unified.geojson"},
+        "Land Quality" : {"path" : "./unified_geojson/Land_Quality_unified.geojson"},
+        "Opportunities" : {"path" : "./unified_geojson/Opportunities__unified.geojson"},
+        "Strategic Policy" : {"path" : "./unified_geojson/Strategic_Policy_unified.geojson"},
     }
 
     for name, layer in constraint_layers.items():

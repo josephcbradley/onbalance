@@ -156,7 +156,7 @@ def group_by_geometry_type(gdfs):
     
     return grouped
 
-def unify_group(group_name, file_paths, output_dir, crs="EPSG:4326", simplify_tolerance=0.0001):
+def unify_group(group_name, file_paths, output_dir, crs="EPSG:4326", simplify_tolerance=0.01):
     """
     Unify a group of GeoJSON files into a single file.
     For polygons, performs a union operation to avoid double-counting overlapping areas.

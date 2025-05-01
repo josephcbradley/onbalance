@@ -1,0 +1,76 @@
+{
+  "unification_time": "2025-05-01 13:06:53",
+  "input_grouping_file": "./data/geojson_final_groups.json",
+  "output_directory": "unified_geojson",
+  "simplification_tolerance": 0.0001,
+  "total_groups_processed": 6,
+  "total_groups_unified": 6,
+  "total_groups_skipped": 0,
+  "total_input_files_processed": 385,
+  "total_output_files_created": 6,
+  "total_features_unified": 9123,
+  "unified_groups": [
+    {
+      "group_name": "Habitat",
+      "output_path": "unified_geojson/Habitat_unified.geojson",
+      "input_files": 75,
+      "feature_count": 22,
+      "geometry_types": [
+        "MultiPolygon",
+        "MultiLineString",
+        "Point"
+      ]
+    },
+    {
+      "group_name": "Opportunities ",
+      "output_path": "unified_geojson/Opportunities__unified.geojson",
+      "input_files": 80,
+      "feature_count": 584,
+      "geometry_types": [
+        "MultiPolygon",
+        "MultiLineString",
+        "Point"
+      ]
+    },
+    {
+      "group_name": "Heritage",
+      "output_path": "unified_geojson/Heritage_unified.geojson",
+      "input_files": 123,
+      "feature_count": 7859,
+      "geometry_types": [
+        "MultiPolygon",
+        "Point"
+      ]
+    },
+    {
+      "group_name": "Flood or Drainage Risk",
+      "output_path": "unified_geojson/Flood_or_Drainage_Risk_unified.geojson",
+      "input_files": 50,
+      "feature_count": 652,
+      "geometry_types": [
+        "MultiPolygon",
+        "MultiLineString"
+      ]
+    },
+    {
+      "group_name": "Strategic Policy",
+      "output_path": "unified_geojson/Strategic_Policy_unified.geojson",
+      "input_files": 51,
+      "feature_count": 1,
+      "geometry_types": [
+        "MultiPolygon"
+      ]
+    },
+    {
+      "group_name": "Land Quality",
+      "output_path": "unified_geojson/Land_Quality_unified.geojson",
+      "input_files": 6,
+      "feature_count": 5,
+      "geometry_types": [
+        "MultiPolygon",
+        "MultiLineString"
+      ]
+    }
+  ],
+  "skipped_groups": []
+}
