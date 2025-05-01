@@ -141,12 +141,27 @@ with tab1:
     
     # Update session state with the current active and broken constraints
     if sorted_constraint_lists:
+        # Check if constraints have changed
+        new_active = sorted_constraint_lists[0].get('items', [])
+        new_broken = sorted_constraint_lists[1].get('items', [])
+        
+        constraints_changed = (
+            new_active != st.session_state.active_constraints or 
+            new_broken != st.session_state.broken_constraints
+        )
+        
         # Save the current state
         st.session_state.sortable_items = sorted_constraint_lists
+        st.session_state.active_constraints = new_active
+        st.session_state.broken_constraints = new_broken
         
-        # Extract active and broken constraints
-        st.session_state.active_constraints = sorted_constraint_lists[0].get('items', [])
-        st.session_state.broken_constraints = sorted_constraint_lists[1].get('items', [])
+        # Clear cache if constraints changed
+        if constraints_changed:
+            # Create a unique key for this constraint configuration
+            cache_key = f"supply_{'-'.join(new_broken)}_{st.session_state.density}"
+            # Remove from cache if exists
+            if cache_key in st.session_state:
+                del st.session_state[cache_key]
     
     # Create a container for the progress display
     progress_container = st.container()
@@ -154,7 +169,7 @@ with tab1:
     # Calculate housing supply based on broken constraints
     broken_constraints = st.session_state.broken_constraints
     
-    # Use our cached calculation function
+    # Use our calculation function (will use cache if available)
     supply_results, total_potential = get_constraint_info(
         broken_constraints,
         st.session_state.density
@@ -184,10 +199,12 @@ with tab1:
                     constraints_needed = row['constraints_violated']
                     break
             
+
             st.info(f"To reach the target, you would need to allow building in areas with: {constraints_needed}")
         
         # Add submit button that doesn't do anything
         st.button("Submit!", type="primary", use_container_width=True)   
+
 
     # Show comprehensive results
     st.subheader("📈 Progressive Housing Supply Analysis")

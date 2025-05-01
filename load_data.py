@@ -172,13 +172,22 @@ def calculate_buildable_supply(shlaa_gdf, constraint_intersections, broken_const
         
         # Get sites that specifically become available due to breaking this constraint
         # (they must violate this constraint and maybe previous broken constraints, but nothing else)
-        this_constraint_sites = newly_available_sites[
-            newly_available_sites['constraint_violations'].apply(
-                lambda x: constraint in x  # Must violate this constraint
-            )
-        ]
-        
-        constraint_dwellings = this_constraint_sites['potential_dwellings'].sum()
+        if not newly_available_sites.empty:
+            this_constraint_sites = newly_available_sites[
+                newly_available_sites['constraint_violations'].apply(
+                    lambda x: constraint in x  # Must violate this constraint
+                )
+            ]
+            
+            # Check if we got any sites
+            if not this_constraint_sites.empty:
+                constraint_dwellings = this_constraint_sites['potential_dwellings'].sum()
+            else:
+                constraint_dwellings = 0
+        else:
+            this_constraint_sites = pd.DataFrame(columns=supply_df.columns)
+            constraint_dwellings = 0
+            
         cumulative_dwellings += constraint_dwellings
         
         results.append({
