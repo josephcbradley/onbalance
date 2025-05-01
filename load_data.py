@@ -174,4 +174,6 @@ shlaa_gdf = shlaa_gdf.to_crs(epsg=4326)  # Ensure it's in WGS84
 shlaa_gdf['area_m2'] = shlaa_gdf.to_crs(epsg=3857).area
 shlaa_gdf['area_ha'] = shlaa_gdf['area_m2'] / 10000
 
+
+
 constraint_layers = load_constraints()

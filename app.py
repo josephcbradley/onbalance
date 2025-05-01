@@ -28,6 +28,53 @@ import tempfile
 import plotly.graph_objects as go
 from streamlit_sortables import sort_items
 
+
+
+@st.cache_data(
+    show_spinner=False,
+    # Tell Streamlit to skip hashing these types
+    hash_funcs={
+        gpd.GeoDataFrame: lambda _: None,
+        dict: lambda _: None
+    }
+)
+def build_shlaa_viz_base(_shlaa_df, _site_constraints):
+    """
+    Cache the expensive constraint-overlay work once per session.
+    """
+    df = _shlaa_df.copy()
+    df["constraints"] = [
+        ", ".join(_site_constraints.get(idx, []))
+        for idx in df.index
+    ]
+    df["constraint_count"] = [
+        len(_site_constraints.get(idx, []))
+        for idx in df.index
+    ]
+    # Optional: to verify caching, uncomment the next line
+    print("🔁 build_shlaa_viz_base ran")
+    return df
+
+@st.cache_data(
+    show_spinner=False,
+    hash_funcs={
+        gpd.GeoDataFrame: lambda _: None,
+        dict:                  lambda _: None
+    }
+)
+def get_shlaa_viz(_shlaa_df, _site_constraints, density):
+    """
+    1) Reuse the cached base viz (constraints & counts)
+    2) Add the 'houses' column for this density
+    This function only reruns when `density` changes.
+    """
+    viz = build_shlaa_viz_base(_shlaa_df, _site_constraints)
+    viz = viz.copy()  # avoid mutating the base
+    viz["houses"] = (
+        viz["area_ha"] * density
+    ).round().astype(int)
+    return viz
+
 # Allow shapefile restoration if missing .shx
 os.environ['SHAPE_RESTORE_SHX'] = 'YES'
 warnings.filterwarnings("ignore", message="Unverified HTTPS request")
@@ -56,6 +103,7 @@ def get_constraint_info(sorted_constraints, density):
             sorted_constraints,
             density
         )
+        # shlaa_gdf['houses'] = potential
         st.session_state[cache_key] = (results, potential)
     
     return st.session_state[cache_key]
@@ -66,6 +114,12 @@ st.title("📍 Buildable Housing Supply Explorer")
 # Initialize session state for configuration
 if "density" not in st.session_state:
     st.session_state.density = 50
+    # Recalculate “houses” whenever density changes
+    shlaa_gdf['houses'] = (
+        (shlaa_gdf['area_ha'] * st.session_state.density)
+        .round()
+        .astype(int)
+    )
 if "housing_target" not in st.session_state:
     st.session_state.housing_target = 50000
 if "selected_constraints" not in st.session_state:
@@ -94,7 +148,6 @@ with tab1:
             max_value=120, 
             value=st.session_state.density
         )
-    
     with config_col2:
         st.session_state.housing_target = st.number_input(
             "Housing Target (dwellings)", 
@@ -253,6 +306,7 @@ with tab1:
         with st.expander("Detailed Area Statistics"):
             st.dataframe(shlaa_gdf[["area_m2", "area_ha"]].describe())
 
+
 # Tab 2: Interactive Map
 with tab2:
     st.subheader("🗺️ Buildable Supply Map with Constraints")
@@ -276,6 +330,10 @@ with tab2:
     
     # Only generate the map if it should be shown (performance optimization)
     if show_shlaa or show_constraints:
+        shlaa_gdf['houses'] = (
+                    shlaa_gdf['area_ha'] 
+                    * st.session_state.density
+                ).round().astype(int)
         # Create base map
         m = folium.Map(
             location=[shlaa_gdf.geometry.centroid.y.mean(), shlaa_gdf.geometry.centroid.x.mean()],
@@ -283,16 +341,15 @@ with tab2:
         )
         
         if show_shlaa:
-            # Cache map data preparation in session state if not already cached
-            if 'shlaa_viz' not in st.session_state:
-                shlaa_viz = shlaa_gdf.copy()
-                shlaa_viz['constraints'] = [', '.join(site_constraints.get(idx, [])) for idx in shlaa_viz.index]
-                shlaa_viz['constraint_count'] = [len(site_constraints.get(idx, [])) for idx in shlaa_viz.index]
-                st.session_state.shlaa_viz = shlaa_viz
-            
-            # Use the cached visualization data
-            shlaa_viz = st.session_state.shlaa_viz
-            
+            # Cache map data preparation in session state if not already cached - REMOVED
+            # Always rebuild the viz layer (so 'houses' stays up to date)
+            # 1) Get the cached base viz (constraints & counts)
+            shlaa_viz = get_shlaa_viz(
+                    shlaa_gdf,
+                    site_constraints,
+                    st.session_state.density
+                )
+
             # Style function for SHLAA sites based on constraints
             def site_style_function(feature):
                 constraint_count = feature['properties']['constraint_count']
@@ -324,8 +381,8 @@ with tab2:
                 name="SHLAA Sites",
                 style_function=site_style_function,
                 tooltip=folium.GeoJsonTooltip(
-                    fields=["area_ha", "constraints", "constraint_count"],
-                    aliases=["Area (ha):", "Constraints:", "Number of Constraints:"],
+                    fields=["area_ha", "constraints", "constraint_count", "houses"],
+                    aliases=["Area (ha):", "Constraints:", "Number of Constraints:", "Number of houses"],
                     localize=True
                 )
             ).add_to(m)
