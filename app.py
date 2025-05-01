@@ -340,7 +340,15 @@ with st.container():
 
             #st.info(f"To reach the target, you would need to allow building in areas with: {constraints_needed}")
         
-
+    if st.button("Generate AI Summary", type="primary", use_container_width=True):
+        display_df = supply_results.rename(columns={
+           'newly_broken_constraint': 'Newly Broken Constraint',
+           'additional_dwellings': 'Additional Dwellings',
+           'cumulative_dwellings': 'Total Dwellings',
+           'sites_count': 'New Sites'
+        })
+        summary = azure_summary_call(display_df, total_potential, st.session_state.housing_target)
+        st.text_area("AI Analysis Summary", summary, height=200)   
 
     ## Show comprehensive results
     #st.subheader("📈 Progressive Housing Supply Analysis")
