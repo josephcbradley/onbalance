@@ -27,9 +27,17 @@ import warnings
 import tempfile
 import plotly.graph_objects as go
 from streamlit_sortables import sort_items
+from openai import AzureOpenAI
 
 # Allow shapefile restoration if missing .shx
 os.environ['SHAPE_RESTORE_SHX'] = 'YES'
+openai_model = os.environ.get("AZURE_OPENAI_MODEL", "gpt-4.1-mini")
+api_version = os.environ.get("OPENAI_API_VERSION", "2024-12-01-preview")
+azure_endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
+api_key = os.environ.get("AZURE_OPENAI_KEY")
+
+from azure_demo import azure_summary_call
+
 warnings.filterwarnings("ignore", message="Unverified HTTPS request")
 
 # Import data after setting page config
@@ -281,7 +289,12 @@ with tab1:
         st.markdown(f"**Total Area:** {total_area_ha:.2f} hectares")
         st.markdown(f"**Maximum Capacity:** {total_potential_dwellings:,} homes")
 
-# Tab 2: Interactive Map
+    
+    # Add submit button and text area for results
+    if st.button("Generate AI Summary", type="primary", use_container_width=True):
+        summary = azure_summary_call(display_df, total_potential, st.session_state.housing_target)
+        st.text_area("AI Analysis Summary", summary, height=200)   
+     # Tab 2: Interactive Map
 with tab2:
     st.subheader("🗺️ Buildable Supply Map with Constraints")
     
