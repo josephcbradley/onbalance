@@ -3,3 +3,5 @@ matplotlib
 fiona
 pyproj
 shapely
+folium
+numpy
