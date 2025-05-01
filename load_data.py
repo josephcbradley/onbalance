@@ -75,7 +75,7 @@ def load_constraints():
         constraint_layers[name]["gdf"] = constraint_layers[name]["gdf"].to_crs(epsg=4326)
 
         # Fix timestamp errors by dropping the column
-        # TypeError: Object of type Timestamp is not JSON serializable
+        # TypeError: Object of type Timestamp is not JSON serializable
         # # Fix all timestamp columns, not just ones called "timestamp"
         for col in constraint_layers[name]["gdf"].columns:
             # Check if column is a timestamp/datetime type
@@ -94,12 +94,84 @@ def load_constraints():
     
     return constraint_layers
 
+def identify_site_constraints(shlaa_gdf, constraint_layers):
+    """Identifies which constraints intersect with each SHLAA site"""
+    constraint_intersection = {}
+    
+    # Initialize intersection tracking
+    for site_id in shlaa_gdf.index:
+        constraint_intersection[site_id] = []
+    
+    # Check each site against each constraint
+    for constraint_name, constraint_info in constraint_layers.items():
+        constraint_gdf = constraint_info["gdf"]
+        
+        # For each SHLAA site, check if it intersects with this constraint
+        for idx, site in shlaa_gdf.iterrows():
+            # Check if site intersects with any constraint geometry
+            for _, constraint in constraint_gdf.iterrows():
+                if site.geometry.intersects(constraint.geometry):
+                    if constraint_name not in constraint_intersection[idx]:
+                        constraint_intersection[idx].append(constraint_name)
+                    break
+    
+    return constraint_intersection
+
+def calculate_buildable_supply(shlaa_gdf, constraint_intersections, constraint_ranking, density):
+    """Calculate buildable housing supply based on prioritized constraints"""
+    # Create a copy to avoid modifying the original
+    supply_df = shlaa_gdf.copy()
+    
+    # Add a column for constraint violations
+    supply_df['constraint_violations'] = [constraint_intersections.get(idx, []) for idx in supply_df.index]
+    
+    # Generate potential dwellings for each site based on area and density
+    supply_df['potential_dwellings'] = (supply_df['area_ha'] * density).astype(int)
+    
+    # Calculate which sites are available based on constraint rankings
+    results = []
+    total_dwellings = 0
+    cumulative_dwellings = 0
+    
+    # Start with completely unconstrained sites
+    available_sites = supply_df[supply_df['constraint_violations'].apply(lambda x: len(x) == 0)]
+    unconstrained_dwellings = available_sites['potential_dwellings'].sum()
+    total_dwellings += unconstrained_dwellings
+    cumulative_dwellings += unconstrained_dwellings
+    
+    results.append({
+        'constraints_violated': "None",
+        'sites_count': len(available_sites),
+        'dwellings': unconstrained_dwellings,
+        'cumulative_dwellings': cumulative_dwellings
+    })
+    
+    # Progressively add sites by violating constraints in priority order
+    for i, constraint in enumerate(constraint_ranking):
+        # Find sites that only violate this constraint and previous prioritized constraints
+        allowed_constraints = constraint_ranking[:i+1]
+        constraint_sites = supply_df[supply_df['constraint_violations'].apply(
+            lambda x: all(cons in allowed_constraints for cons in x) and len(x) > 0
+        )]
+        
+        constraint_dwellings = constraint_sites['potential_dwellings'].sum()
+        total_dwellings += constraint_dwellings
+        cumulative_dwellings += constraint_dwellings
+        
+        results.append({
+            'constraints_violated': f"Up to {constraint}",
+            'sites_count': len(constraint_sites),
+            'dwellings': constraint_dwellings,
+            'cumulative_dwellings': cumulative_dwellings
+        })
+    
+    return pd.DataFrame(results), total_dwellings
+
 shlaa_gdf = gpd.read_file("./data/London_SHLAA_2017_approvals_and_allocations/London_SHLAA_2017_approvals_and_allocations.geojson")
 
 # Calculate area in square meters and hectares
 shlaa_gdf = shlaa_gdf.to_crs(epsg=4326)  # Ensure it's in WGS84
 shlaa_gdf['area_m2'] = shlaa_gdf.to_crs(epsg=3857).area
 shlaa_gdf['area_ha'] = shlaa_gdf['area_m2'] / 10000
-
 
 constraint_layers = load_constraints()
