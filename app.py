@@ -10,22 +10,22 @@
 #   streamlit run demo_map.py
 
 import os
-import glob
+#import glob
 import streamlit as st
 
 # Set page config first before any other Streamlit commands
 st.set_page_config(layout="wide", page_title="Buildable Supply Explorer")
 
-import pandas as pd
+#import pandas as pd
 import geopandas as gpd
-from shapely.geometry import Point
+#from shapely.geometry import Point
 import folium
 from streamlit_folium import st_folium
-import requests
-import io
+#import requests
+#import io
 import warnings
-import tempfile
-import plotly.graph_objects as go
+#import tempfile
+#import plotly.graph_objects as go
 from streamlit_sortables import sort_items
 
 
@@ -73,23 +73,36 @@ def get_shlaa_viz(_shlaa_df, _site_constraints, density):
         viz["area_ha"] * density
     ).round().astype(int)
     return viz
-# Style function for SHLAA sites based on constraints
+# Style function for SHLAA sites based on constraints and broken constraints
 def site_style_function(feature):
     constraint_count = feature['properties']['constraint_count']
+    constraints = feature['properties']['constraints'].split(', ') if feature['properties']['constraints'] else []
+    broken_constraints = st.session_state.broken_constraints
+    active_constraints = st.session_state.active_constraints
     
-    # Color scheme based on number of constraints
-    if constraint_count == 0:
-        color = "#00CC00"  # Green for unconstrained sites
+    # Check if site has any constraints
+    has_constraints = len(constraints) > 0
+    
+    # Check if all site constraints are in the broken constraints list
+    all_constraints_broken = all(constraint in broken_constraints for constraint in constraints if constraint)
+    
+    # Color scheme based on constraint status
+    if not has_constraints:
+        # No constraints - green
+        color = "#00CC00"  # Green for sites with no constraints
         opacity = 0.8
-    elif constraint_count == 1:
-        color = "#FFCC00"  # Yellow for one constraint
-        opacity = 0.6
-    elif constraint_count == 2:
-        color = "#FF9900"  # Orange for two constraints
-        opacity = 0.5
+    #elif all_constraints_broken:
+    #    # All constraints broken - green (buildable)
+    #    color = "#00CC00"  # Green for buildable sites
+    #    opacity = 0.8
+    elif has_constraints and any(constraint in broken_constraints for constraint in constraints):
+        # Some constraints broken but still has active constraints - red (broken but still constrained)
+        color = "#FF9900"  # Red for sites that still have active constraints
+        opacity = 0.7
     else:
-        color = "#FF0000"  # Red for three or more constraints
-        opacity = 0.4
+        # Has constraints and none are broken - gray (not buildable)
+        color = "#999999"  # Gray for non-buildable sites with active constraints
+        opacity = 0.5
         
     return {
         "fillColor": color,
@@ -100,17 +113,20 @@ def site_style_function(feature):
 
 # Allow shapefile restoration if missing .shx
 os.environ['SHAPE_RESTORE_SHX'] = 'YES'
-openai_model = os.environ.get("AZURE_OPENAI_MODEL", "gpt-4.1-mini")
-api_version = os.environ.get("OPENAI_API_VERSION", "2024-12-01-preview")
-azure_endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
-api_key = os.environ.get("AZURE_OPENAI_KEY")
+#openai_model = os.environ.get("AZURE_OPENAI_MODEL", "gpt-4.1-mini")
+#api_version = os.environ.get("OPENAI_API_VERSION", "2024-12-01-preview")
+#azure_endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
+#api_key = os.environ.get("AZURE_OPENAI_KEY")
 
-from azure_demo import azure_summary_call
+#from azure_demo import azure_summary_call
 
 warnings.filterwarnings("ignore", message="Unverified HTTPS request")
 
+
 # Import data after setting page config
 from load_data import shlaa_gdf, constraint_layers, identify_site_constraints, calculate_buildable_supply
+
+
 
 # Simple cached values with stable hashing 
 constraint_colors = ["#FF3333", "#FF9933", "#FFCC33", "#33CC33", "#3366FF", "#9933FF", "#996633"]
@@ -276,7 +292,7 @@ with st.container():
             # Create base map
             m = folium.Map(
                 location=[shlaa_gdf.geometry.centroid.y.mean(), shlaa_gdf.geometry.centroid.x.mean()],
-                zoom_start=11
+                zoom_start=12.5
             )
             
             # Cache map data preparation in session state if not already cached
@@ -314,15 +330,13 @@ with st.container():
             legend_html = '''
             <div style="position: fixed; bottom: 50px; left: 50px; z-index: 1000; background-color: white; 
                 padding: 10px; border-radius: 5px; border: 1px solid grey; opacity: 0.8;">
-                <p><strong>SHLAA Sites by Constraints</strong></p>
+                <p><strong>SHLAA Sites by Constraint Status</strong></p>
                 <p><i style="background: #00CC00; opacity: 0.8; width: 20px; height: 14px; 
-                    display: inline-block; margin-right: 5px;"></i>No constraints</p>
-                <p><i style="background: #FFCC00; opacity: 0.6; width: 20px; height: 14px; 
-                    display: inline-block; margin-right: 5px;"></i>1 constraint</p>
-                <p><i style="background: #FF9900; opacity: 0.5; width: 20px; height: 14px; 
-                    display: inline-block; margin-right: 5px;"></i>2 constraints</p>
-                <p><i style="background: #FF0000; opacity: 0.4; width: 20px; height: 14px; 
-                    display: inline-block; margin-right: 5px;"></i>3+ constraints</p>
+                    display: inline-block; margin-right: 5px;"></i>Buildable (no constraints or all broken)</p>
+                <p><i style="background: #FF9900; opacity: 0.7; width: 20px; height: 14px; 
+                    display: inline-block; margin-right: 5px;"></i>Partially broken constraints</p>
+                <p><i style="background: #999999; opacity: 0.5; width: 20px; height: 14px; 
+                    display: inline-block; margin-right: 5px;"></i>Not buildable (active constraints)</p>
             </div>
             '''
             
@@ -340,15 +354,15 @@ with st.container():
 
             #st.info(f"To reach the target, you would need to allow building in areas with: {constraints_needed}")
         
-    if st.button("Generate AI Summary", type="primary", use_container_width=True):
-        display_df = supply_results.rename(columns={
-           'newly_broken_constraint': 'Newly Broken Constraint',
-           'additional_dwellings': 'Additional Dwellings',
-           'cumulative_dwellings': 'Total Dwellings',
-           'sites_count': 'New Sites'
-        })
-        summary = azure_summary_call(display_df, total_potential, st.session_state.housing_target)
-        st.text_area("AI Analysis Summary", summary, height=200)   
+    #if st.button("Generate AI Summary", type="primary", use_container_width=True):
+    #    display_df = supply_results.rename(columns={
+    #       'newly_broken_constraint': 'Newly Broken Constraint',
+    #       'additional_dwellings': 'Additional Dwellings',
+    #       'cumulative_dwellings': 'Total Dwellings',
+    #       'sites_count': 'New Sites'
+    #    })
+    #    summary = azure_summary_call(display_df, total_potential, st.session_state.housing_target)
+    #    st.text_area("AI Analysis Summary", summary, height=200)   
 
     ## Show comprehensive results
     #st.subheader("📈 Progressive Housing Supply Analysis")
@@ -538,7 +552,7 @@ with st.container():
 #                    display: inline-block; margin-right: 5px;"></i>1 constraint</p>
 #                <p><i style="background: #FF9900; opacity: 0.5; width: 20px; height: 14px; 
 #                    display: inline-block; margin-right: 5px;"></i>2 constraints</p>
-#                <p><i style="background: #FF0000; opacity: 0.4; width: 20px; height: 14px; 
+#                <p><i style="background: #FF9900; opacity: 0.4; width: 20px; height: 14px; 
 #                    display: inline-block; margin-right: 5px;"></i>3+ constraints</p>
 #            </div>
 #            '''

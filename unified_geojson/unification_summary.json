@@ -1,8 +1,8 @@
 {
-  "unification_time": "2025-05-01 13:06:53",
+  "unification_time": "2025-05-02 12:17:31",
   "input_grouping_file": "./data/geojson_final_groups.json",
   "output_directory": "unified_geojson",
-  "simplification_tolerance": 0.0001,
+  "simplification_tolerance": 1.0,
   "total_groups_processed": 6,
   "total_groups_unified": 6,
   "total_groups_skipped": 0,

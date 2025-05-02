@@ -31,7 +31,7 @@ def normalize_column_names(gdf):
     gdf.columns = [col.lower().replace(' ', '_') for col in gdf.columns]
     return gdf
 
-def union_polygons(gdf, tolerance=0.0001):
+def union_polygons(gdf, tolerance):
     """
     Create a union of overlapping polygons and simplify the result.
     
@@ -156,7 +156,7 @@ def group_by_geometry_type(gdfs):
     
     return grouped
 
-def unify_group(group_name, file_paths, output_dir, crs="EPSG:4326", simplify_tolerance=0.01):
+def unify_group(group_name, file_paths, output_dir, crs="EPSG:4326", simplify_tolerance=0.1):
     """
     Unify a group of GeoJSON files into a single file.
     For polygons, performs a union operation to avoid double-counting overlapping areas.
@@ -294,7 +294,7 @@ def main():
     parser.add_argument('grouping_json', help='JSON file with grouping definitions')
     parser.add_argument('--output_dir', '-o', default='unified_geojson', help='Output directory for unified files')
     parser.add_argument('--crs', default='EPSG:4326', help='Coordinate reference system for output files')
-    parser.add_argument('--simplify', '-s', type=float, default=0.0001, 
+    parser.add_argument('--simplify', '-s', type=float, default=0.3, 
                         help='Tolerance for simplifying geometries (0 to disable)')
     
     args = parser.parse_args()

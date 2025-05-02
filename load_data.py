@@ -60,11 +60,11 @@ def generate_dummy_data():
 def load_constraints():
 
     constraint_layers = {
-        "Flood_or_Drainage_Risk" : {"path" : "./unified_geojson/Flood_or_Drainage_Risk_unified.geojson"},
-        "Habitat" : {"path" : "./unified_geojson/Habitat_unified.geojson"},
+        #"Flood or Drainage Risk" : {"path" : "./unified_geojson/Flood_or_Drainage_Risk_unified.geojson"},
+        #"Habitat" : {"path" : "./unified_geojson/Habitat_unified.geojson"},
         "Heritage" : {"path" : "./unified_geojson/Heritage_unified.geojson"},
         "Land Quality" : {"path" : "./unified_geojson/Land_Quality_unified.geojson"},
-        "Opportunities" : {"path" : "./unified_geojson/Opportunities__unified.geojson"},
+        #"Opportunities" : {"path" : "./unified_geojson/Opportunities__unified.geojson"},
         "Strategic Policy" : {"path" : "./unified_geojson/Strategic_Policy_unified.geojson"},
     }
 
@@ -94,6 +94,8 @@ def load_constraints():
 
 def identify_site_constraints(shlaa_gdf, constraint_layers):
     """Identifies which constraints intersect with each SHLAA site"""
+    "Identifying constraints for each SHLAA site..."
+    print("Identifying constraints for each SHLAA site...")
     constraint_intersection = {}
     
     # Initialize intersection tracking
